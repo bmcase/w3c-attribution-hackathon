@@ -1,5 +1,4 @@
 {
-  "$comment": "Verify that insufficient budget requests do not consume budget.",
   "events": [
     {
       "seconds": 1,
@@ -13,14 +12,13 @@
       "event": "measureConversion",
       "options": {
         "aggregationService": "https://agg-service.example",
-        "epsilon": 2,
+        "epsilon": 1,
         "histogramSize": 2,
-        "lookbackDays": 1,
-        "value": 4,
+        "lookbackDays": 30,
+        "value": 5,
         "maxValue": 8
       },
-      "$comment": "Consumes half the budget: l1Norm=4, noiseScale=8, deduction=500000. Budget: 1000000 -> 500000",
-      "expected": [4, 0]
+      "expected": [5, 0]
     },
     {
       "seconds": 3,
@@ -28,13 +26,12 @@
       "event": "measureConversion",
       "options": {
         "aggregationService": "https://agg-service.example",
-        "epsilon": 2,
+        "epsilon": 1,
         "histogramSize": 2,
-        "lookbackDays": 1,
-        "value": 8,
+        "lookbackDays": 30,
+        "value": 4,
         "maxValue": 8
       },
-      "$comment": "Over-request: needs 1000000 but only 500000 remains. Returns zeros and does NOT consume budget.",
       "expected": [0, 0]
     },
     {
@@ -43,14 +40,13 @@
       "event": "measureConversion",
       "options": {
         "aggregationService": "https://agg-service.example",
-        "epsilon": 2,
+        "epsilon": 1,
         "histogramSize": 2,
-        "lookbackDays": 1,
-        "value": 4,
+        "lookbackDays": 30,
+        "value": 2,
         "maxValue": 8
       },
-      "$comment": "Proves budget was not consumed: needs 500000, has 500000. If the over-request wrongly consumed budget this would return zeros.",
-      "expected": [4, 0]
+      "expected": [2, 0]
     }
   ]
 }
