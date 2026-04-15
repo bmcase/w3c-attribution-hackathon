@@ -1,0 +1,65 @@
+{
+  "config": {
+    "aggregationServices": {
+      "https://agg-service.example": "dap-15-histogram"
+    },
+    "epochStart": 0.5,
+    "fairlyAllocateCreditFraction": 0.5,
+    "globalPrivacyBudgetPerEpoch": 1000000,
+    "impressionSiteQuotaPerEpoch": 500000,
+    "maxConversionSitesPerImpression": 3,
+    "maxConversionCallersPerImpression": 3,
+    "maxImpressionSitesForConversion": 3,
+    "maxImpressionCallersForConversion": 3,
+    "maxCreditSize": 10,
+    "maxMatchValues": 10,
+    "maxLookbackDays": 30,
+    "maxHistogramSize": 5,
+    "perSitePrivacyBudget": 1000000,
+    "privacyBudgetEpochDays": 7
+  },
+  "events": [
+    {
+      "seconds": 1,
+      "site": "publisher-a.example",
+      "event": "saveImpression",
+      "options": { "histogramIndex": 0 }
+    },
+    {
+      "seconds": 2,
+      "site": "publisher-b.example",
+      "event": "saveImpression",
+      "options": { "histogramIndex": 1 }
+    },
+    {
+      "seconds": 3,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 3,
+        "lookbackDays": 1,
+        "value": 8,
+        "maxValue": 8,
+        "credit": [1, 7]
+      },
+      "expected": [7, 1, 0]
+    },
+    {
+      "seconds": 4,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 3,
+        "lookbackDays": 1,
+        "value": 1,
+        "maxValue": 8,
+        "impressionSites": ["publisher-b.example"]
+      },
+      "expected": [0, 1, 0]
+    }
+  ]
+}
