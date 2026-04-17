@@ -1,0 +1,84 @@
+{
+  "$comment": "Tests that per-site impression quota deductions are based on actual per-site L1 norms, not global valueDeduction. Site A exhausts its quota after uneven credit allocation, while site B retains budget.",
+  "config": {
+    "aggregationServices": {
+      "https://agg-service.example": "dap-15-histogram"
+    },
+    "epochStart": 0.5,
+    "fairlyAllocateCreditFraction": 0.5,
+    "globalPrivacyBudgetPerEpoch": 8000000,
+    "impressionSiteQuotaPerEpoch": 500000,
+    "maxConversionSitesPerImpression": 3,
+    "maxConversionCallersPerImpression": 3,
+    "maxImpressionSitesForConversion": 3,
+    "maxImpressionCallersForConversion": 3,
+    "maxCreditSize": 10,
+    "maxMatchValues": 10,
+    "maxLookbackDays": 30,
+    "maxHistogramSize": 5,
+    "perSitePrivacyBudget": 8000000,
+    "privacyBudgetEpochDays": 7
+  },
+  "events": [
+    {
+      "seconds": 1,
+      "site": "publisher-a.example",
+      "event": "saveImpression",
+      "options": { "histogramIndex": 0 }
+    },
+    {
+      "seconds": 2,
+      "site": "publisher-b.example",
+      "event": "saveImpression",
+      "options": { "histogramIndex": 1 }
+    },
+    {
+      "$comment": "Both sites matched. credit=[1,7], sorted by timestamp desc: publisher-b gets 1, publisher-a gets 7. Per-site L1: A=7, B=1. noiseScale=16. A deduction=ceil(7/16*1e6)=437500, B deduction=ceil(1/16*1e6)=62500. Both under 500000 quota.",
+      "seconds": 3,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 3,
+        "lookbackDays": 1,
+        "value": 8,
+        "maxValue": 8,
+        "credit": [1, 7]
+      },
+      "expected": [7, 1, 0]
+    },
+    {
+      "$comment": "Only publisher-a. L1=1, deduction=62500. A remaining=500000-437500=62500. 62500<=62500 succeeds exactly. With wrong valueDeduction (500000), A would be at 0 and this would fail.",
+      "seconds": 4,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 3,
+        "lookbackDays": 1,
+        "value": 1,
+        "maxValue": 8,
+        "impressionSites": ["publisher-a.example"]
+      },
+      "expected": [1, 0, 0]
+    },
+    {
+      "$comment": "Only publisher-b. L1=1, deduction=62500. B remaining=500000-62500=437500. Easily succeeds. With wrong valueDeduction, B would be at 0 and fail.",
+      "seconds": 5,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 3,
+        "lookbackDays": 1,
+        "value": 1,
+        "maxValue": 8,
+        "impressionSites": ["publisher-b.example"]
+      },
+      "expected": [0, 1, 0]
+    }
+  ]
+}

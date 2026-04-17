@@ -1,0 +1,106 @@
+{
+  "$comment": "Tests per-site quota deduction with 3 impression sites and uneven credit. Verifies that each site's deduction reflects its actual attributed credit, not the global maximum.",
+  "config": {
+    "aggregationServices": {
+      "https://agg-service.example": "dap-15-histogram"
+    },
+    "epochStart": 0.5,
+    "fairlyAllocateCreditFraction": 0.5,
+    "globalPrivacyBudgetPerEpoch": 8000000,
+    "impressionSiteQuotaPerEpoch": 500000,
+    "maxConversionSitesPerImpression": 3,
+    "maxConversionCallersPerImpression": 3,
+    "maxImpressionSitesForConversion": 3,
+    "maxImpressionCallersForConversion": 3,
+    "maxCreditSize": 10,
+    "maxMatchValues": 10,
+    "maxLookbackDays": 30,
+    "maxHistogramSize": 5,
+    "perSitePrivacyBudget": 8000000,
+    "privacyBudgetEpochDays": 7
+  },
+  "events": [
+    {
+      "seconds": 1,
+      "site": "publisher-a.example",
+      "event": "saveImpression",
+      "options": { "histogramIndex": 0 }
+    },
+    {
+      "seconds": 2,
+      "site": "publisher-b.example",
+      "event": "saveImpression",
+      "options": { "histogramIndex": 1 }
+    },
+    {
+      "seconds": 3,
+      "site": "publisher-c.example",
+      "event": "saveImpression",
+      "options": { "histogramIndex": 2 }
+    },
+    {
+      "$comment": "3 sites matched. Sorted by timestamp desc: C(sec3), B(sec2), A(sec1). credit=[1,1,6]. C gets 1, B gets 1, A gets 6. Per-site L1: A=6, B=1, C=1. noiseScale=16. A deduction=ceil(6/16*1e6)=375000, B=62500, C=62500. All under 500000.",
+      "seconds": 4,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 4,
+        "lookbackDays": 1,
+        "value": 8,
+        "maxValue": 8,
+        "credit": [1, 1, 6]
+      },
+      "expected": [6, 1, 1, 0]
+    },
+    {
+      "$comment": "Only publisher-a. L1=2, deduction=125000. A remaining=500000-375000=125000. 125000<=125000 succeeds exactly. With wrong valueDeduction (500000), A would be at 0 and fail.",
+      "seconds": 5,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 4,
+        "lookbackDays": 1,
+        "value": 2,
+        "maxValue": 8,
+        "impressionSites": ["publisher-a.example"]
+      },
+      "expected": [2, 0, 0, 0]
+    },
+    {
+      "$comment": "Only publisher-a again. A quota now exhausted (125000-125000=0). Any deduction fails. Expected zeros.",
+      "seconds": 6,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 4,
+        "lookbackDays": 1,
+        "value": 1,
+        "maxValue": 8,
+        "impressionSites": ["publisher-a.example"]
+      },
+      "expected": [0, 0, 0, 0]
+    },
+    {
+      "$comment": "Only publisher-b. B remaining=500000-62500=437500. L1=7, deduction=ceil(7/16*1e6)=437500. 437500<=437500 succeeds exactly. Proves B has independent quota from exhausted A.",
+      "seconds": 7,
+      "site": "advertiser-1.example",
+      "event": "measureConversion",
+      "options": {
+        "aggregationService": "https://agg-service.example",
+        "epsilon": 1,
+        "histogramSize": 4,
+        "lookbackDays": 1,
+        "value": 7,
+        "maxValue": 8,
+        "impressionSites": ["publisher-b.example"]
+      },
+      "expected": [0, 7, 0, 0]
+    }
+  ]
+}
